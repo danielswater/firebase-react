@@ -6,6 +6,7 @@ function App() {
   const [titulo, setTitulo] = useState('');
   const [autor, setAutor] = useState('');
   const [posts, setPosts] = useState([])
+  const [idPost, setIdPost] = useState('');
 
   useEffect(() => {
     async function loadPost() {
@@ -96,9 +97,42 @@ function App() {
 
   }
 
+  async function editarPost() {
+    await firebase.firestore().collection('posts')
+      .doc(idPost)
+      .update({
+        titulo: titulo,
+        autor: autor
+      })
+      .then(() => {
+        console.log('DADOS ATUALIZADOS')
+        setTitulo('')
+        setAutor('')
+        setIdPost('')
+      })
+      .catch((error) => {
+        console.log('erro ao atualizar', error)
+      })
+  }
+
+  async function excluirPost(id) {
+    await firebase.firestore().collection('posts')
+      .doc(id)
+      .delete()
+      .then(() => {
+        alert('EXCLUIDO')
+      })
+      .catch((error) => {
+
+      })
+  }
+
   return (
     <div>
       <h1>REACT FIREBASE</h1>
+      <br />
+      <label>id</label>
+      <input type="text" value={idPost} onChange={(e) => setIdPost(e.target.value)} />
       <br />
       <label>Titulo</label>
       <textarea type="text" value={titulo} onChange={(e) => setTitulo(e.target.value)} />
@@ -108,16 +142,19 @@ function App() {
 
       <button onClick={handleAdd}>CADASTRAR</button><br />
 
-      <button onClick={buscarPost}>BUSCAR</button>
+      <button onClick={buscarPost}>BUSCAR</button><br />
+
+      <button onClick={editarPost}>EDITAR</button><br />
 
       <br />
       <ul>
         {posts.map((item) => {
           return (
             <li key={item.id}>
+              <span>ID: {item.id}</span><br />
               <span>Autor: {item.autor}</span><br />
               <span>titulo: {item.titulo}</span><br />
-
+              <button onClick={() => excluirPost(item.id)}>EXCLUIR</button>
             </li>
           )
         })}
