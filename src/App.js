@@ -8,6 +8,12 @@ function App() {
   const [posts, setPosts] = useState([])
   const [idPost, setIdPost] = useState('');
 
+  const [email, setEmail] = useState('');
+  const [senha, setSenha] = useState('');
+
+  const [user, setUser] = useState(false)
+  const [userLogged, setUserLogged] = useState({})
+
   useEffect(() => {
     async function loadPost() {
       await firebase.firestore().collection('posts')
@@ -26,6 +32,29 @@ function App() {
     }
 
     loadPost()
+  }, [])
+
+
+  useEffect(() => {
+    async function checkLogin() {
+      await firebase.auth().onAuthStateChanged((user) => {
+        if (user) {
+          setUser(true)
+          setUserLogged({
+            uid: user.uid,
+            email: user.email
+          })
+        }
+        else {
+          setUser(false)
+          setUserLogged({})
+        }
+      })
+    }
+
+    checkLogin()
+
+
   }, [])
 
   async function handleAdd() {
@@ -127,10 +156,72 @@ function App() {
       })
   }
 
+  async function novoUsuario() {
+    await firebase.auth().createUserWithEmailAndPassword(email, senha)
+      .then((value) => {
+        console.log('cadastrado com sucesso ', value)
+        setEmail('')
+        setSenha('')
+      })
+      .catch((error) => {
+        setEmail('')
+        setSenha('')
+        if (error.code === 'auth/weak-password') {
+          alert('senha fraca')
+        }
+        else if (error.code === 'auth/email-already-in-use') {
+          alert('email ja cadastrado')
+        }
+      })
+  }
+
+  async function logout() {
+    await firebase.auth().signOut()
+  }
+
+  async function fazerLogin() {
+    await firebase.auth().signInWithEmailAndPassword(email, senha)
+      .then((value) => {
+        console.log(value)
+      })
+      .catch((error) => {
+        console.log('erro', error)
+      })
+  }
+
   return (
     <div>
+
       <h1>REACT FIREBASE</h1>
       <br />
+
+
+      {user && (
+        <div>
+          <strong>VOCE ESTA LOGADO</strong>
+          <br />
+          <span>{userLogged.uid} - {userLogged.email}</span>
+          <br />
+          <br />
+        </div>
+      )}
+
+
+      <div >
+        <h2>CADASTRAR</h2>
+        <label>EMAIL</label>
+        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} /><br />
+        <label>SENHA</label>
+        <input type="password" value={senha} onChange={(e) => setSenha(e.target.value)} /><br />
+        <button onClick={fazerLogin}>FAZER LOGIN</button><br />
+        <button onClick={novoUsuario}>CADASTRAR</button><br />
+        <button onClick={logout}>SAIR DA CONTA</button>
+      </div>
+
+      <br />
+      <br />
+      <br />
+      <h2>BANCO DE DADOS</h2>
       <label>id</label>
       <input type="text" value={idPost} onChange={(e) => setIdPost(e.target.value)} />
       <br />
