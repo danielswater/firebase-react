@@ -1,167 +1,35 @@
 import firebase from './firebaseConnection';
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 
 function App() {
 
-  const [titulo, setTitulo] = useState('');
-  const [autor, setAutor] = useState('');
-  const [posts, setPosts] = useState([])
-  const [idPost, setIdPost] = useState('');
-
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
+  const [cargo, setCargo] = useState('');
+  const [nome, setNome] = useState('');
 
-  const [user, setUser] = useState(false)
-  const [userLogged, setUserLogged] = useState({})
+  const [user, setUser] = useState({});
 
-  useEffect(() => {
-    async function loadPost() {
-      await firebase.firestore().collection('posts')
-        .onSnapshot((doc) => {
-          let meusPosts = []
-          doc.forEach((item) => {
-            meusPosts.push({
-              id: item.id,
-              titulo: item.data().titulo,
-              autor: item.data().autor
-            })
-          })
-
-          setPosts(meusPosts)
-        })
-    }
-
-    loadPost()
-  }, [])
-
-
-  useEffect(() => {
-    async function checkLogin() {
-      await firebase.auth().onAuthStateChanged((user) => {
-        if (user) {
-          setUser(true)
-          setUserLogged({
-            uid: user.uid,
-            email: user.email
-          })
-        }
-        else {
-          setUser(false)
-          setUserLogged({})
-        }
-      })
-    }
-
-    checkLogin()
-
-
-  }, [])
-
-  async function handleAdd() {
-    /*     await firebase.firestore().collection('posts')
-          .doc('12345')
-          .set({
-            titulo: titulo,
-            autor: autor
-          })
-          .then(() => {
-            console.log('dados cadsatrados')
-          })
-          .catch((error) => {
-            console.log('erro ', error)
-          }) */
-
-    // gerar id aleatorio
-    await firebase.firestore().collection('posts')
-      .add({
-        titulo: titulo,
-        autor: autor
-      })
-      .then(() => {
-        console.log('dados cadastrados')
-        setAutor('')
-        setTitulo('')
-      })
-      .catch((error) => {
-        console.log('erro ', error)
-      })
-
-  }
-
-  async function buscarPost() {
-
-    /*     await firebase.firestore().collection('posts')
-          .doc('roDK0Foet27sWN2Q9Ddr')
-          .get()
-          .then((snapshot) => {
-            setTitulo(snapshot.data().titulo)
-            setAutor(snapshot.data().autor)
-          })
-          .catch((error) => {
-            console.log('erro', error)
-          }) */
-
-    //montar lista
-
-    await firebase.firestore().collection('posts')
-      .get()
-      .then((snapshot) => {
-        let lista = []
-        snapshot.forEach((doc) => {
-          lista.push({
-            id: doc.id,
-            titulo: doc.data().titulo,
-            autor: doc.data().autor
-          })
-        })
-
-        setPosts(lista)
-
-      })
-      .catch((error) => {
-        console.log('deu erro')
-      })
-
-
-
-  }
-
-  async function editarPost() {
-    await firebase.firestore().collection('posts')
-      .doc(idPost)
-      .update({
-        titulo: titulo,
-        autor: autor
-      })
-      .then(() => {
-        console.log('DADOS ATUALIZADOS')
-        setTitulo('')
-        setAutor('')
-        setIdPost('')
-      })
-      .catch((error) => {
-        console.log('erro ao atualizar', error)
-      })
-  }
-
-  async function excluirPost(id) {
-    await firebase.firestore().collection('posts')
-      .doc(id)
-      .delete()
-      .then(() => {
-        alert('EXCLUIDO')
-      })
-      .catch((error) => {
-
-      })
-  }
 
   async function novoUsuario() {
+    logout()
     await firebase.auth().createUserWithEmailAndPassword(email, senha)
-      .then((value) => {
-        console.log('cadastrado com sucesso ', value)
-        setEmail('')
-        setSenha('')
+      .then(async (value) => {
+
+        firebase.firestore().collection('users')
+          .doc(value.user.uid)
+          .set({
+            nome: nome,
+            cargo: cargo,
+            status: true
+          })
+          .then(() => {
+            setNome('')
+            setCargo('')
+            setEmail('')
+            setSenha('')
+          })
+
       })
       .catch((error) => {
         setEmail('')
@@ -177,17 +45,29 @@ function App() {
 
   async function logout() {
     await firebase.auth().signOut()
+    setUser({})
   }
 
-  async function fazerLogin() {
+  async function login() {
     await firebase.auth().signInWithEmailAndPassword(email, senha)
-      .then((value) => {
-        console.log(value)
+      .then(async (value) => {
+        await firebase.firestore().collection('users')
+          .doc(value.user.uid)
+          .get()
+          .then((snapshot) => {
+            setUser({
+              nome: snapshot.data().nome,
+              cargo: snapshot.data().cargo,
+              status: snapshot.data().status,
+              email: value.user.email
+            })
+          })
       })
       .catch((error) => {
-        console.log('erro', error)
+        console.log('erro ao logar', error)
       })
   }
+
 
   return (
     <div>
@@ -196,60 +76,40 @@ function App() {
       <br />
 
 
-      {user && (
-        <div>
-          <strong>VOCE ESTA LOGADO</strong>
-          <br />
-          <span>{userLogged.uid} - {userLogged.email}</span>
-          <br />
-          <br />
-        </div>
-      )}
 
 
       <div >
         <h2>CADASTRAR</h2>
+
+        <label>NOME</label>
+        <input type="text" value={nome} onChange={(e) => setNome(e.target.value)} /><br />
+
+        <label>CARGO</label>
+        <input type="text" value={cargo} onChange={(e) => setCargo(e.target.value)} /><br /><br /><br />
+
         <label>EMAIL</label>
         <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} /><br />
         <label>SENHA</label>
-        <input type="password" value={senha} onChange={(e) => setSenha(e.target.value)} /><br />
-        <button onClick={fazerLogin}>FAZER LOGIN</button><br />
+        <input type="password" value={senha} onChange={(e) => setSenha(e.target.value)} /><br /><br /><br />
+
         <button onClick={novoUsuario}>CADASTRAR</button><br />
-        <button onClick={logout}>SAIR DA CONTA</button>
+        <button onClick={logout}>SAIR DA CONTA</button><br />
+        <button onClick={login}>LOGIN</button>
       </div>
 
       <br />
       <br />
       <br />
-      <h2>BANCO DE DADOS</h2>
-      <label>id</label>
-      <input type="text" value={idPost} onChange={(e) => setIdPost(e.target.value)} />
-      <br />
-      <label>Titulo</label>
-      <textarea type="text" value={titulo} onChange={(e) => setTitulo(e.target.value)} />
-      <br />
-      <label>Autor</label>
-      <input type="text" value={autor} onChange={(e) => setAutor(e.target.value)} /><br />
 
-      <button onClick={handleAdd}>CADASTRAR</button><br />
+      {Object.keys(user).length > 0 && (
+        <div>
+          <strong>OLÁ {user.nome}</strong><br />
+          <strong>CARGO: {user.cargo}</strong><br />
+          <strong>STATUS: {String(user.status ? 'ativo' : 'inativo')}</strong><br />
+          <strong>EMAIL: {user.email}</strong><br />
+        </div>
+      )}
 
-      <button onClick={buscarPost}>BUSCAR</button><br />
-
-      <button onClick={editarPost}>EDITAR</button><br />
-
-      <br />
-      <ul>
-        {posts.map((item) => {
-          return (
-            <li key={item.id}>
-              <span>ID: {item.id}</span><br />
-              <span>Autor: {item.autor}</span><br />
-              <span>titulo: {item.titulo}</span><br />
-              <button onClick={() => excluirPost(item.id)}>EXCLUIR</button>
-            </li>
-          )
-        })}
-      </ul>
     </div>
   );
 }
